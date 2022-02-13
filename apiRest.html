@@ -1,0 +1,206 @@
+<!-- 
+	*********** Crear el proyecto ***********
+- seleccionamos un proyecto de tipo ASP.NET Core Web Api
+- siguiente
+- nombre (ApiRestCore) y ruta
+- siguiente
+- plataforma = .net 5
+- crear
+	- quitamos el archivo WeatherForecast.cs y su controlador
+
+	*********** Creo la bd ***********
+- db api
+
+create table PRODUCTO(
+id int identity primary key,
+Nombre varchar(250) not null,
+PrecioCompra float not null,
+PrecioVenta float not null,
+Stock int not null
+);
+
+insert into PRODUCTO values('TV',2000.20,2500,2);
+
+	*********** Creo el modelo ***********
+- Agrego la carpeta Models
+	- agrego una clase llamada Producto = mismo nombre de la tabla
+	- agrego los campos de la tabla
+		using System;
+		using System.Collections.Generic;
+		using System.ComponentModel.DataAnnotations;
+		using System.Linq;
+		using System.Threading.Tasks;
+
+		namespace ApiRestCore.Models
+		{
+		    public class Producto
+		    {
+		        //tener cuidado de no tener un campo con el mismo nombre de la clase
+		        [Key]//PK con la libreria System.ComponentModel.DataAnnotations;
+		        public int id { get; set; }
+		        public string Nombre { get; set; }
+		        public double PrecioCompra { get; set; }
+		        public double PrecioVenta { get; set; }
+		        public int Stock { get; set; }
+		    }
+		}
+
+	*********** Crear el controlador ***********
+- agrego el controlador "controlador de api con acciones que usan entityframework"
+	- selecciono el modelo (Producto (ApiRestCore.Modelo)) ProductoController dentro de la carpeta 
+		- agrego la clase del modelo de datos = ApiRestCore.Data.ApiRestCoreContext , es la que viene por defecto
+		- como nombre el que da por defecto y se crea nuestro controller con toda su estructura antes de seguir agrego la cadena de conexion
+			using System;
+			using System.Collections.Generic;
+			using System.Linq;
+			using System.Threading.Tasks;
+			using Microsoft.AspNetCore.Http;
+			using Microsoft.AspNetCore.Mvc;
+			using Microsoft.EntityFrameworkCore;
+			using ApiRestCore.Data;
+			using ApiRestCore.Models;
+
+			namespace ApiRestCore.Controllers
+			{
+			    [Route("api/[controller]")]
+			    [ApiController]
+			    public class ProductoesController : ControllerBase
+			    {
+			        private readonly ApiRestCoreContext _context;
+
+			        public ProductoesController(ApiRestCoreContext context)
+			        {
+			            _context = context;
+			        }
+
+			        // GET: api/Productoes
+			        [HttpGet]
+			        public async Task<ActionResult<IEnumerable<Producto>>> GetProducto()
+			        {
+			            return await _context.Producto.ToListAsync();
+			        }
+
+			        // GET: api/Productoes/5
+			        [HttpGet("{id}")]
+			        public async Task<ActionResult<Producto>> GetProducto(int id)
+			        {
+			            var producto = await _context.Producto.FindAsync(id);
+
+			            if (producto == null)
+			            {
+			                return NotFound();
+			            }
+
+			            return producto;
+			        }
+
+			        // PUT: api/Productoes/5
+			        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+			        [HttpPut("{id}", Name ="GetProducto")]
+			        public async Task<IActionResult> PutProducto(int id, Producto producto)
+			        {
+			            if (id != producto.id)
+			            {
+			                return BadRequest();
+			            }
+
+			            _context.Entry(producto).State = EntityState.Modified;
+
+			            try
+			            {
+			                await _context.SaveChangesAsync();
+			            }
+			            catch (DbUpdateConcurrencyException)
+			            {
+			                if (!ProductoExists(id))
+			                {
+			                    return NotFound();
+			                }
+			                else
+			                {
+			                    throw;
+			                }
+			            }
+			            //return NoContent();
+			            //retorno los datos solo para mostrar que se ingresaron correctamente
+			            return CreatedAtRoute("GetProducto", new { id = producto.id }, producto);
+			        }
+
+			        // POST: api/Productoes
+			        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+			        [HttpPost]
+			        public async Task<ActionResult<Producto>> PostProducto(Producto producto)
+			        {
+			            _context.Producto.Add(producto);
+			            await _context.SaveChangesAsync();
+
+			            return CreatedAtAction("GetProducto", new { id = producto.id }, producto);
+			        }
+
+			        // DELETE: api/Productoes/5
+			        [HttpDelete("{id}")]
+			        public async Task<IActionResult> DeleteProducto(int id)
+			        {
+			            var producto = await _context.Producto.FindAsync(id);
+			            if (producto == null)
+			            {
+			                return NotFound();
+			            }
+
+			            _context.Producto.Remove(producto);
+			            await _context.SaveChangesAsync();
+
+			            //return NoContent();
+			            return Ok("Registro con id:"+id+" eliminado");
+			        }
+
+			        private bool ProductoExists(int id)
+			        {
+			            return _context.Producto.Any(e => e.id == id);
+			        }
+			    }
+			}
+
+
+
+	*********** Cadena de Conexión  ***********
+- se hace en el archivo appsettings.json
+	{
+	  "Logging": {
+	    "LogLevel": {
+	      "Default": "Information",
+	      "Microsoft": "Warning",
+	      "Microsoft.Hosting.Lifetime": "Information"
+	    }
+	  },
+	  "AllowedHosts": "*",
+	  //conexion para autentificacion por windows
+	  //"ConnectionStrings": {
+	  //"ApiRestCoreContext": "Server=(localdb)\\mssqllocaldb;Database=api;Trusted_Connection=True;MultipleActiveResultSets=true"
+	  //}
+	  "ConnectionStrings": {
+	    "Conexion": "data source=DESKTOP-AS47IGS;initial catalog=api; user id=sa; password=123456789;MultipleActiveResultSets=true"
+	  }
+	}
+
+
+	*********** Indicar el punto de entrada de la aplicación ***********
+- en el archivo "launchSettings.json" dentro de la carpeta Properties
+	- cambio la dos lineas "launchUrl" por mi ruta o controlador "api/productoes",
+
+	*********** Importante rectificar los parametros del contexto en el archivo StartUp.cs ***********
+ services.AddDbContext<ApiRestCoreContext>(options => options.UseSqlServer(Configuration.GetConnectionString("Conexion")));
+ //services.AddControllers().AddNewtonsoftJson();
+
+	*********** Contexto ***********
+- este se crea automaticamente en la carpeta Data
+
+	*********** Probar el CRUD ***********
+- se puede hacer desde el navegador con un plugin llamado Talend API Tester - Free Edition, disponible en chrome
+- para consumirla desde el cliente ay que agregar la siguiente extencion o paqute
+	Microsoft.AspNetCore.Mvc.NewtonsoftJson
+- y agrego la siguiente linea en el archivo startUp.cs
+	services.AddControllers().AddNewtonsoftJson();
+
+
+ -->
